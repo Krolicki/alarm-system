@@ -7,7 +7,7 @@ System alarmowy - Raspberry Pi
  - Moduł RFID MF RC522 
  - Buzzer z generatorem FY248
  - Czujnik magnetyczny otwarcia drzwi/okien CMD14
- - 3x Dioda LED (czerwona, zielona ,żółta)
+ - 3x Dioda LED (czerwona, zielona, żółta)
 
 **Czujnik ruchu:**
  - zasilanie 5V - PIN 2 PWR
@@ -27,6 +27,7 @@ System alarmowy - Raspberry Pi
  - Zielona - GPIO 13 (PIN 33)
  - Żółta - GPIO 6 (PIN 31)
  - Masa układu - PIN 39
+
 Do każdej diody dodany rezystor 100 Ω (Ohm) 1/4W
 
 **Moduł RFID:**
@@ -38,6 +39,9 @@ Do każdej diody dodany rezystor 100 Ω (Ohm) 1/4W
  - RST - GPIO 25 (PIN 22)
  - zasilanie 3.3V - PIN 17 PWR
  - IQR - nieużywany
+
 Do działania należy włączyć interfejs SPI:
+
 sudo raspi-config -> (3)Interface... -> (I4)SPI -> Yes
+
 sudo reboot
