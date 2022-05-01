@@ -1,7 +1,6 @@
 import RPi.GPIO as GPIO
 import time
 from threading import Thread
-#import mfrc522 #RFID
 from mfrc522 import SimpleMFRC522
 
 GPIO.setwarnings(False)
@@ -11,6 +10,7 @@ sensor = 12 #pin GPIO czujnika otwarcia drzwi
 GPIO.setup(sensor, GPIO.IN, pull_up_down = GPIO.PUD_UP) #sygnał wejściowy + pull-up na 1
 buzzer = 4 #pin GPIO buzzera
 GPIO.setup(buzzer,GPIO.OUT)
+
 #diody led
 red_led = 26
 green_led = 13
@@ -18,14 +18,14 @@ yellow_led = 6
 GPIO.setup(red_led,GPIO.OUT)
 GPIO.setup(green_led,GPIO.OUT)
 GPIO.setup(yellow_led,GPIO.OUT)
-#reader = mfrc522.MFRC522() #czytnik RFID
-reader = SimpleMFRC522()
+
+reader = SimpleMFRC522() #czytnik kart
 
 sensorSignal = None
 isOpen = False
 armed = False
 
-def clear_led():
+def clear_led(): #wyłączanie wszystkich diód LED
     GPIO.output(red_led, False)
     GPIO.output(green_led, False)
     GPIO.output(yellow_led, False)
@@ -44,7 +44,24 @@ def beep(repeat, tone): #buzzer - pętla synchronizacji fazowej
             GPIO.output(buzzer, False)
             time.sleep(tone)
         time.sleep(0.08)
-        
+
+def alarm(): #dźwięk alarmu
+    #for i in range(0, 10):
+    while True:
+        for pulse in range(30): 
+            GPIO.output(buzzer, True)
+            time.sleep(0.000420)
+            GPIO.output(buzzer, False)
+            time.sleep(0.000420)
+        global isOpen
+        global armed
+        if not armed: #wyłączenie alarmu po rozbrojeniu systemu
+            break
+        #elif not isOpen: #wyłączenie alarmu po zamknięcu drzwi 
+        #    break
+        else:
+            time.sleep(0.3)
+
 def RFIDReader():#wątek czytnika kart
     global armed
     while True:
@@ -58,6 +75,8 @@ def RFIDReader():#wątek czytnika kart
                 GPIO.output(green_led, False)
                 beep(2, "hi")
                 armed = True
+                doorThread = Thread(target=doorSensor)
+                doorThread.start()
             else:
                 beep(2, "hi")
                 GPIO.output(red_led, False)
@@ -68,25 +87,25 @@ def RFIDReader():#wątek czytnika kart
             GPIO.output(yellow_led, True)
             time.sleep(2)
             GPIO.output(yellow_led, False)
-
-#        status,TagType = reader.MFRC522_Request(reader.PICC_REQIDL)
-#        status,uid = reader.MFRC522_Anticoll()
-#        if status == reader.MI_OK:
-#            print("UID: "+str(uid[0])+","+str(uid[1])+","+str(uid[2])+","+str(uid[3]))
-#            time.sleep(2)
         time.sleep(0.2)
 
 def doorSensor(): #wątek czujnika otwarcia drzwi
-    while True: 
+    while True:
+        global isOpen
         sensorSignal = GPIO.input(sensor)
         if(sensorSignal and (isOpen == False)):
             isOpen = True
             print("Otwarto drzwi")
-            #beep(2)
+            alarmThread = Thread(target=alarm)
+            alarmThread.start()
+            break
         elif not (sensorSignal):
             isOpen = False
-
-        time.sleep(0.1)
+        global armed
+        if not armed:
+            break
+        else:
+           time.sleep(0.1) 
 
 def main():
     clear_led()
@@ -94,9 +113,5 @@ def main():
         GPIO.output(green_led, True)
     readerThread = Thread(target=RFIDReader)
     readerThread.start()
-
-    #doorThread = Thread(target=doorSensor)
-    #doorThread.start()
-    clear_led() #tymczasowo do testów !!
-    
+    #clear_led() #tymczasowo do testów !!
 main()
