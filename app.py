@@ -10,6 +10,8 @@ sensor = 12 #pin GPIO czujnika otwarcia drzwi
 GPIO.setup(sensor, GPIO.IN, pull_up_down = GPIO.PUD_UP) #sygnał wejściowy + pull-up na 1
 buzzer = 4 #pin GPIO buzzera
 GPIO.setup(buzzer,GPIO.OUT)
+czujnik = 18 #czujnik ruchu
+GPIO.setup(czujnik,GPIO.IN)
 
 #diody led
 red_led = 26
@@ -24,6 +26,7 @@ reader = SimpleMFRC522() #czytnik kart
 sensorSignal = None
 isOpen = False
 armed = False
+alarming = False
 
 def clear_led(): #wyłączanie wszystkich diód LED
     GPIO.output(red_led, False)
@@ -50,10 +53,10 @@ def alarm(): #dźwięk alarmu
     while True:
         for pulse in range(30): 
             GPIO.output(buzzer, True)
-            time.sleep(0.000420)
+            time.sleep(0.000200)
             GPIO.output(buzzer, False)
-            time.sleep(0.000420)
-        global isOpen
+            time.sleep(0.000200)
+        #global isOpen
         global armed
         if not armed: #wyłączenie alarmu po rozbrojeniu systemu
             break
@@ -77,11 +80,14 @@ def RFIDReader():#wątek czytnika kart
                 armed = True
                 doorThread = Thread(target=doorSensor)
                 doorThread.start()
+                motionThread = Thread(target=motion)
+                motionThread.start()
             else:
+                armed = False
                 beep(2, "hi")
                 GPIO.output(red_led, False)
                 GPIO.output(green_led, True)
-                armed = False
+                time.sleep(2)
         else:
             beep(2, "low")
             GPIO.output(yellow_led, True)
@@ -91,13 +97,16 @@ def RFIDReader():#wątek czytnika kart
 
 def doorSensor(): #wątek czujnika otwarcia drzwi
     while True:
+        global alarming
         global isOpen
         sensorSignal = GPIO.input(sensor)
-        if(sensorSignal and (isOpen == False)):
+        if sensorSignal and not isOpen:
             isOpen = True
             print("Otwarto drzwi")
-            alarmThread = Thread(target=alarm)
-            alarmThread.start()
+            if not alarming:
+                alarmThread = Thread(target=alarm)
+                alarmThread.start()
+                alarming = True
             break
         elif not (sensorSignal):
             isOpen = False
@@ -106,6 +115,24 @@ def doorSensor(): #wątek czujnika otwarcia drzwi
             break
         else:
            time.sleep(0.1) 
+
+def motion(): #wątek czujnika ruchu
+    detect = 0
+    while True:
+        global alarming
+        motionSignal=GPIO.input(18)
+        if motionSignal==1:
+            detect += 1
+            if detect == 3 and not alarming:
+                alarmThread = Thread(target=alarm)
+                alarmThread.start()
+                alarming = True
+            time.sleep(1)
+        global armed
+        if not armed:
+            break
+        else:
+            time.sleep(0.1)
 
 def main():
     clear_led()
